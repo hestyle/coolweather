@@ -2,6 +2,8 @@ package cn.hestyle.coolweather.util;
 
 import android.text.TextUtils;
 
+import com.google.gson.Gson;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -9,6 +11,7 @@ import org.json.JSONObject;
 import cn.hestyle.coolweather.db.City;
 import cn.hestyle.coolweather.db.County;
 import cn.hestyle.coolweather.db.Province;
+import cn.hestyle.coolweather.gson.Weather;
 
 public class Utility {
     /**
@@ -85,5 +88,22 @@ public class Utility {
             }
         }
         return false;
+    }
+
+    /**
+     * 处理返回的服务器返回的weather json格式数据，转成实体类
+     * @param response      weather json格式数据
+     * @return              weather实体类对象
+     */
+    public static Weather handleWeatherResponse(String response) {
+        try {
+            JSONObject jsonObject = new JSONObject(response);
+            JSONArray jsonArray = jsonObject.getJSONArray("HeWeather");
+            String weatherContent = jsonArray.getJSONObject(0).toString();
+            return new Gson().fromJson(weatherContent, Weather.class);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }
