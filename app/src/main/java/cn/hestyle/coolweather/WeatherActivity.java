@@ -6,6 +6,7 @@ import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
@@ -16,6 +17,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.GravityCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.bumptech.glide.Glide;
@@ -34,7 +37,13 @@ import okhttp3.Callback;
 import okhttp3.Response;
 
 public class WeatherActivity extends AppCompatActivity {
-    private SwipeRefreshLayout swipeRefreshLayout;
+    public static String weatherId;
+
+    public DrawerLayout drawerLayout;
+
+    private Button navButton;
+
+    public SwipeRefreshLayout swipeRefreshLayout;
 
     private ImageView bingPicImg;
 
@@ -70,6 +79,8 @@ public class WeatherActivity extends AppCompatActivity {
         }
         setContentView(R.layout.activity_weather);
         // 初始化各控件
+        drawerLayout = findViewById(R.id.drawer_layout);
+        navButton = findViewById(R.id.nav_button);
         swipeRefreshLayout = findViewById(R.id.swipe_refresh);
         bingPicImg = findViewById(R.id.bing_pic_img);
         weatherLayout = (ScrollView) findViewById(R.id.weather_layout);
@@ -86,22 +97,32 @@ public class WeatherActivity extends AppCompatActivity {
 
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         String weatherString = prefs.getString("weather", null);
-        final String weatherId;
+        Weather weather = null;
+        String intentWeatherId = getIntent().getStringExtra("weather_id");
         if (weatherString != null) {
             // 有缓存时直接解析天气数据
-            Weather weather = Utility.handleWeatherResponse(weatherString);
-            weatherId = weather.basic.weatherId;
-            showWeatherInfo(weather);
-        } else {
+            weather = Utility.handleWeatherResponse(weatherString);
+            if (intentWeatherId == null || intentWeatherId.equals(weather.basic.weatherId)) {
+                WeatherActivity.weatherId = weather.basic.weatherId;
+                showWeatherInfo(weather);
+            } else {
+                // 请求天气
+                WeatherActivity.weatherId = intentWeatherId;
+                weatherLayout.setVisibility(View.INVISIBLE);
+                requestWeather(weatherId);
+            }
+        } else if (intentWeatherId != null) {
             // 无缓存时去服务器查询天气
-            weatherId = getIntent().getStringExtra("weather_id");
+            WeatherActivity.weatherId = intentWeatherId;
             weatherLayout.setVisibility(View.INVISIBLE);
             requestWeather(weatherId);
+        } else {
+            // 无缓存、无intentWeatherId
         }
         swipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
-                requestWeather(weatherId);
+                requestWeather(WeatherActivity.weatherId);
             }
         });
         String bingPic = prefs.getString("bing_pic", null);
@@ -110,13 +131,19 @@ public class WeatherActivity extends AppCompatActivity {
         } else {
             loadBingPic();
         }
+        navButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                drawerLayout.openDrawer(GravityCompat.START);
+            }
+        });
     }
 
     /**
      * 根据天气id请求城市天气信息。
      */
     public void requestWeather(final String weatherId) {
-        String weatherUrl = "http://guolin.tech/api/weather?cityid=" + weatherId + "&key=bc0418b57b2d4918819d3974ac1285d9";
+        String weatherUrl = "http://guolin.tech/api/weather?cityid=" + weatherId + "&key=d474be7a6bfa46149d0f680ed3938e27";
         HttpUtil.sendOkHttpRequest(weatherUrl, new Callback() {
             @Override
             public void onResponse(Call call, Response response) throws IOException {
